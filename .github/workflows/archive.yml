@@ -1,3 +1,4 @@
+
 name: Build and Deploy Archive
 
 on:
@@ -11,33 +12,27 @@ permissions:
   id-token: write
 
 concurrency:
-  group: "pages"
+  group: pages
   cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.x"
 
-      - name: Generate archive website
+      - name: Generate Website
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: python scripts/generate.py
 
-      - name: Commit generated pages
+      - name: Commit Pages
         run: |
           if [[ -n "$(git status --porcelain site)" ]]; then
             git config user.name "github-actions[bot]"
@@ -45,15 +40,10 @@ jobs:
             git add site
             git commit -m "Update archive website"
             git push
-          else
-            echo "No generated website changes."
           fi
 
-      - name: Upload Pages artifact
-        uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v3
         with:
           path: site
 
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - uses: actions/deploy-pages@v4
