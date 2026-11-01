@@ -1,0 +1,83 @@
+
+name: Create Release Manually
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (örnek: v1.0.0)"
+        required: true
+        type: string
+
+      title:
+        description: "Release başlığı"
+        required: true
+        type: string
+
+      description:
+        description: "Release açıklaması"
+        required: false
+        type: string
+
+      asset_urls:
+        description: "Dosya bağlantıları (her satıra bir URL)"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Create Release and Upload Files
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          RELEASE_TITLE: ${{ inputs.title }}
+          RELEASE_DESCRIPTION: ${{ inputs.description }}
+          ASSET_URLS: ${{ inputs.asset_urls }}
+        run: python scripts/create_release.py
+
+      - name: Generate Website
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: python scripts/generate.py
+
+      - name: Commit Generated Pages
+        run: |
+          if [[ -n "$(git status --porcelain site)" ]]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add site
+            git commit -m "Update archive website"
+            git push
+          fi
+
+      - name: Upload Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Deploy Pages
+        uses: actions/
+        deploy-pages@v4
